@@ -163,6 +163,42 @@ const formatPrimaryContent = (sections) => {
     }
     return content;
 };
+// Try to fetch a symbol, returning undefined on failure
+const tryGetSymbol = async (client, path) => {
+    try {
+        return await client.getSymbol(path);
+    }
+    catch {
+        return undefined;
+    }
+};
+// Resolve symbol path, trying multiple framework prefixes for known patterns
+const resolveSymbol = async (client, path, frameworkName) => {
+    // If path already has full documentation prefix, try it directly
+    if (path.startsWith('documentation/')) {
+        return client.getSymbol(path);
+    }
+    // Try path as-is first
+    const directResult = await tryGetSymbol(client, path);
+    if (directResult) {
+        return directResult;
+    }
+    // Build list of framework prefixes to try
+    const frameworksToTry = [];
+    // If symbol starts with MPS, prioritize Metal Performance Shaders frameworks
+    if (path.startsWith('MPS')) {
+        frameworksToTry.push('MetalPerformanceShaders', 'MetalPerformanceShadersGraph');
+    }
+    // Always include the currently selected framework
+    frameworksToTry.push(frameworkName);
+    // Try each framework prefix in parallel
+    const results = await Promise.all(frameworksToTry.map(async (fw) => tryGetSymbol(client, `documentation/${fw}/${path}`)));
+    const found = results.find(r => r !== undefined);
+    if (found) {
+        return found;
+    }
+    throw new McpError(ErrorCode.InvalidRequest, `Failed to load documentation for "${path}" in frameworks: ${frameworksToTry.join(', ')}`);
+};
 export const buildGetDocumentationHandler = (context) => {
     const { client, state } = context;
     const noTechnology = buildNoTechnologyMessage(context);
@@ -178,30 +214,7 @@ export const buildGetDocumentationHandler = (context) => {
             throw new McpError(ErrorCode.InvalidRequest, `Invalid technology identifier: ${activeTechnology.identifier}`);
         }
         // Try path as-is first, fallback to framework-prefixed path
-        let targetPath = path;
-        let data;
-        try {
-            // First attempt: try the path exactly as provided
-            data = await client.getSymbol(targetPath);
-        }
-        catch (error) {
-            // If that fails and path doesn't already start with documentation/,
-            // try prefixing with framework path
-            if (path.startsWith('documentation/')) {
-                // Path already starts with documentation/, so just rethrow original error
-                throw error;
-            }
-            else {
-                try {
-                    targetPath = `documentation/${frameworkName}/${path}`;
-                    data = await client.getSymbol(targetPath);
-                }
-                catch {
-                    // If both attempts fail, throw the original error with helpful context
-                    throw new McpError(ErrorCode.InvalidRequest, `Failed to load documentation for both "${path}" and "${targetPath}": ${error instanceof Error ? error.message : String(error)}`);
-                }
-            }
-        }
+        const data = await resolveSymbol(client, path, frameworkName);
         const title = data.metadata?.title || 'Symbol';
         const kind = data.metadata?.symbolKind || 'Unknown';
         const roleHeading = data.metadata?.roleHeading;
