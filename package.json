@@ -27,12 +27,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/zakkeown/apple-doc-mcp.git"
+    "url": "https://github.com/zkeown/apple-doc-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/zakkeown/apple-doc-mcp/issues"
+    "url": "https://github.com/zkeown/apple-doc-mcp/issues"
   },
-  "homepage": "https://github.com/zakkeown/apple-doc-mcp#readme",
+  "homepage": "https://github.com/zkeown/apple-doc-mcp#readme",
   "scripts": {
     "build": "tsc && chmod +x dist/index.js",
     "lint": "tsc --noEmit && xo src",

@@ -1,6 +1,6 @@
 # Apple Documentation MCP Server
 
-> **Fork Note**: This is an actively maintained fork of [MightyDillah/apple-doc-mcp](https://github.com/MightyDillah/apple-doc-mcp), with improvements including retry logic, LRU caching, async I/O, and better test coverage.
+> **Fork Note**: This is an actively maintained fork of [MightyDillah/apple-doc-mcp](https://github.com/MightyDillah/apple-doc-mcp), with improvements including retry logic, LRU caching, async I/O, dependency injection, and comprehensive test coverage (92%+ coverage).
 
 An MCP (Model Context Protocol) server providing seamless access to Apple Developer Documentation with smart search and wildcard support.
 
@@ -48,10 +48,13 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 |----------|---------|-------------|
 | `APPLE_DOC_CACHE_TTL_MS` | `600000` | Memory cache TTL (10 minutes) |
 | `APPLE_DOC_CACHE_MAX_SIZE` | `100` | Max entries in memory cache |
-| `APPLE_DOC_CACHE_DIR` | `.cache` | Cache directory |
+| `APPLE_DOC_CACHE_DIR` | `~/.cache/apple-doc-mcp` | Cache directory for persistent storage |
 | `APPLE_DOC_TIMEOUT_MS` | `15000` | HTTP request timeout |
-| `APPLE_DOC_MAX_RETRIES` | `3` | Max retry attempts |
-| `APPLE_DOC_MAX_RESULTS` | `20` | Default search results |
+| `APPLE_DOC_MAX_RETRIES` | `3` | Max retry attempts for transient failures |
+| `APPLE_DOC_RETRY_DELAY_MS` | `500` | Base delay between retries |
+| `APPLE_DOC_MAX_RESULTS` | `20` | Default search results limit |
+| `APPLE_DOC_PAGE_SIZE` | `25` | Default page size for discovery |
+| `APPLE_DOC_MAX_CONCURRENT` | `5` | Max concurrent HTTP requests |
 
 ## Available Tools
 
@@ -87,7 +90,7 @@ Search for symbols within the selected framework.
 ```text
 Arguments:
   - query: Search keywords (supports * and ? wildcards)
-  - maxResults (optional): Max results (default 20)
+  - maxResults (optional): Max results (default 20, max 100)
   - platform (optional): Filter by platform
   - symbolType (optional): Filter by kind (class, struct, protocol)
 ```
@@ -135,11 +138,20 @@ pnpm build
 # Run tests
 pnpm test
 
-# Run integration tests
+# Run tests with coverage
+pnpm test:coverage
+
+# Run integration tests (requires network)
 pnpm test:integration
 
 # Lint
 pnpm lint
+
+# Lint and fix
+pnpm lint:fix
+
+# Full verification (lint + test + build)
+pnpm verify
 ```
 
 ## License
